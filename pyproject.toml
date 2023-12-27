@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "djot-log"
+version = "0.1.0"
+description = ""
+authors = ["alex <alex@pdp7.net>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+
+[tool.poetry.group.dev.dependencies]
+ipython = "<8.19"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
