@@ -1,0 +1,14 @@
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - run: ./scripts.py validate
+        env:
+          SPL_BOOTSTRAP_POETRY_WITH_PIPX: yes

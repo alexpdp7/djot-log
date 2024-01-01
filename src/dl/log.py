@@ -15,6 +15,7 @@ class Entry:
     end: datetime.time
     tags: typing.Set[typing.List[str]]
 
+
 def entry_from_pair(pair):
     start, end = pair
     tag_set = set()
@@ -43,5 +44,18 @@ class Day:
 def day_from_section(section: djot.Section):
     return Day(
         date=datetime.date.fromisoformat(section.attributes["id"]),
-        entries=list(filter(None, map(entry_from_pair, [(start, end) for start, end in zip(section.children[1:], section.children[2:])]))),
+        entries=list(
+            filter(
+                None,
+                map(
+                    entry_from_pair,
+                    [
+                        (start, end)
+                        for start, end in zip(
+                            section.children[1:], section.children[2:]
+                        )
+                    ],
+                ),
+            )
+        ),
     )

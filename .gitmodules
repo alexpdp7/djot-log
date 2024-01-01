@@ -1,0 +1,3 @@
+[submodule ".scripts-py-libs"]
+	path = .scripts-py-libs
+	url = https://github.com/alexpdp7/scripts-py-libs.git

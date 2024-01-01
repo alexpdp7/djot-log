@@ -5,7 +5,13 @@ import typing
 
 
 def raw_parse(s: str):
-    p = subprocess.run(["npx", "--yes", "-q", "@djot/djot", "-t", "ast"], check=True, input=s, encoding="utf8", stdout=subprocess.PIPE)
+    p = subprocess.run(
+        ["npx", "--yes", "-q", "@djot/djot", "-t", "ast"],
+        check=True,
+        input=s,
+        encoding="utf8",
+        stdout=subprocess.PIPE,
+    )
     return json.loads(p.stdout)
 
 
@@ -27,7 +33,6 @@ class Inline:
 @dataclasses.dataclass
 class HasAttributes:
     attributes: typing.Any
-
 
 
 @dataclasses.dataclass
