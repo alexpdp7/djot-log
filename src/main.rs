@@ -6,11 +6,13 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     let (logs, errors) = djot_log::parse_log(&source);
     log::error!("{:?}", errors);
     println!("{}", logs.to_plain_text());
-    let mut accumulated_vs_target = logs.accumulated_vs_target(chrono::Duration::hours(8));
-    accumulated_vs_target.reverse();
-    for (date, total, vs_target) in accumulated_vs_target {
+    for (date, total, vs_target) in logs
+        .accumulated_vs_target(chrono::Duration::hours(8))
+        .iter()
+        .rev()
+    {
         println!("{} {} {}", date, total, vs_target);
-        if vs_target == chrono::Duration::zero() {
+        if *vs_target == chrono::Duration::zero() {
             break;
         }
     }
