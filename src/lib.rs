@@ -211,11 +211,7 @@ impl Kinds {
 
 impl std::fmt::Display for Kinds {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fn fmt_path(path: &Vec<String>) -> String {
-            path.join(" / ")
-        }
-
-        let mut paths = self.paths.iter().map(fmt_path).collect::<Vec<_>>();
+        let mut paths = self.paths.iter().map(|p| p.join(" / ")).collect::<Vec<_>>();
         paths.sort();
         write!(f, "{}", paths.join(" // "))
     }
