@@ -223,7 +223,34 @@ impl std::fmt::Display for Log {
     }
 }
 
-pub fn parse_log(s: &str) -> (HashSet<Log>, Vec<String>) {
+pub struct Logs {
+    logs: HashSet<Log>,
+}
+
+impl Logs {
+    pub fn to_plain_text(&self) -> String {
+        let mut logs = self.logs.iter().collect::<Vec<_>>();
+        logs.sort_by_key(|l| l.start);
+        logs.iter()
+            .map(|l| format!("{}", l))
+            .collect::<Vec<_>>()
+            .join("\n")
+            .to_string()
+    }
+}
+
+///
+/// ```
+/// let source = std::fs::read_to_string("example.md").unwrap();
+/// let (logs, errors) = djot_log::parse_log(&source);
+/// assert!(errors.is_empty());
+/// assert_eq!(logs.to_plain_text(), "2023-12-03 09:00:00-13:00:00 Coding // Work / MyOrg / MyDept / MyProj
+/// 2023-12-03 14:00:00-15:00:00 Meeting // Work / MyOrg / MyDept
+/// 2023-12-03 15:00:00-18:00:00 Coding // Work / MyOrg / MyDept / MyProj
+/// 2023-12-04 09:00:00-13:00:00 Coding // Work / MyOrg / MyDept / MyProj
+/// 2023-12-04 14:00:00-18:00:00 Coding // Work / MyOrg / MyDept / MyProj")
+/// ```
+pub fn parse_log(s: &str) -> (Logs, Vec<String>) {
     let mut current_day: Option<naive::NaiveDate> = None;
     let mut start_time: Option<naive::NaiveDateTime> = None;
     let mut errors: Vec<String> = vec![];
@@ -266,5 +293,5 @@ pub fn parse_log(s: &str) -> (HashSet<Log>, Vec<String>) {
             },
         }
     }
-    (logs, errors)
+    (Logs { logs }, errors)
 }
