@@ -1,17 +1,24 @@
 use chrono::naive;
 use markdown::mdast;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+pub enum LogNode {
+    DayHeader(DayHeader),
+    TimeHeader(TimeHeader),
+    KindHeader(KindHeader),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DayHeader {
     pub date: naive::NaiveDate,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TimeHeader {
     pub time: naive::NaiveTime,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct KindHeader {
     pub path: Vec<String>,
 }
@@ -21,6 +28,7 @@ pub trait NodeExt {
     fn to_day_header(&self) -> Option<DayHeader>;
     fn to_time_header(&self) -> Option<TimeHeader>;
     fn to_kind_header(&self) -> Option<KindHeader>;
+    fn to_log_node(&self) -> Option<LogNode>;
 }
 
 impl NodeExt for mdast::Node {
@@ -112,6 +120,18 @@ impl NodeExt for mdast::Node {
         }
     }
 
+    fn to_log_node(&self) -> Option<LogNode> {
+        [
+            self.to_day_header().map(|dh| LogNode::DayHeader(dh)),
+            self.to_time_header().map(|th| LogNode::TimeHeader(th)),
+            self.to_kind_header().map(|kh| LogNode::KindHeader(kh)),
+        ]
+        .iter()
+        .flatten()
+        .next()
+        .cloned()
+    }
+
     fn expect_root(self) -> mdast::Root {
         match self {
             mdast::Node::Root(root) => root,
@@ -126,4 +146,42 @@ pub fn parse_markdown(s: &str) -> mdast::Root {
     markdown::to_mdast(s, &markdown::ParseOptions::default())
         .unwrap()
         .expect_root()
+}
+
+/// ```
+/// let source = std::fs::read_to_string("example.md").unwrap();
+/// let debug = format!("{:?}", djot_log::parse_log_nodes(&source))
+///     .strip_prefix("[")
+///     .unwrap()
+///     .strip_suffix("]")
+///     .unwrap()
+///     .replace("), ", ")\n");
+/// assert_eq!(debug, r##"DayHeader(DayHeader { date: 2023-12-03 })
+/// TimeHeader(TimeHeader { time: 09:00:00 })
+/// KindHeader(KindHeader { path: ["Work", "MyOrg", "MyDept", "MyProj"] })
+/// KindHeader(KindHeader { path: ["Coding"] })
+/// TimeHeader(TimeHeader { time: 13:00:00 })
+/// TimeHeader(TimeHeader { time: 14:00:00 })
+/// KindHeader(KindHeader { path: ["Work", "MyOrg", "MyDept"] })
+/// KindHeader(KindHeader { path: ["Meeting"] })
+/// TimeHeader(TimeHeader { time: 15:00:00 })
+/// KindHeader(KindHeader { path: ["Work", "MyOrg", "MyDept", "MyProj"] })
+/// KindHeader(KindHeader { path: ["Coding"] })
+/// TimeHeader(TimeHeader { time: 18:00:00 })
+/// DayHeader(DayHeader { date: 2023-12-04 })
+/// TimeHeader(TimeHeader { time: 09:00:00 })
+/// KindHeader(KindHeader { path: ["Work", "MyOrg", "MyDept", "MyProj"] })
+/// KindHeader(KindHeader { path: ["Coding"] })
+/// TimeHeader(TimeHeader { time: 13:00:00 })
+/// TimeHeader(TimeHeader { time: 14:00:00 })
+/// KindHeader(KindHeader { path: ["Work", "MyOrg", "MyDept", "MyProj"] })
+/// KindHeader(KindHeader { path: ["Coding"] })
+/// TimeHeader(TimeHeader { time: 18:00:00 })"##)
+/// ```
+pub fn parse_log_nodes(s: &str) -> Vec<LogNode> {
+    parse_markdown(s)
+        .children
+        .iter()
+        .flat_map(NodeExt::to_log_node)
+        .collect::<Vec<_>>()
 }
