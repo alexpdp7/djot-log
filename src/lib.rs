@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
 use chrono::naive;
 use frozenset::Freeze;
@@ -243,8 +243,8 @@ impl Logs {
             .to_string()
     }
 
-    pub fn total_by_day(&self) -> HashMap<naive::NaiveDate, chrono::Duration> {
-        let mut days_to_total: HashMap<naive::NaiveDate, chrono::Duration> = HashMap::new();
+    pub fn total_by_day(&self) -> BTreeMap<naive::NaiveDate, chrono::Duration> {
+        let mut days_to_total: BTreeMap<naive::NaiveDate, chrono::Duration> = BTreeMap::new();
         self.logs.iter().for_each(|l| {
             let day = &l.start.date();
             let previous_duration = *days_to_total.get(day).unwrap_or(&chrono::Duration::zero());
