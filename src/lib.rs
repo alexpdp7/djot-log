@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use chrono::naive;
 use frozenset::Freeze;
@@ -189,14 +189,14 @@ pub fn parse_log_nodes(s: &str) -> Vec<LogNode> {
         .collect::<Vec<_>>()
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Log {
     pub start: naive::NaiveDateTime,
     end: naive::NaiveDateTime,
     kinds: Kinds,
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Kinds {
     paths: frozenset::FrozenSet<Vec<String>>,
 }
@@ -228,14 +228,29 @@ pub struct Logs {
 }
 
 impl Logs {
-    pub fn to_plain_text(&self) -> String {
-        let mut logs = self.logs.iter().collect::<Vec<_>>();
+    fn sorted_logs(&self) -> Vec<Log> {
+        let mut logs = self.logs.iter().cloned().collect::<Vec<_>>();
         logs.sort_by_key(|l| l.start);
-        logs.iter()
+        logs
+    }
+
+    pub fn to_plain_text(&self) -> String {
+        self.sorted_logs()
+            .iter()
             .map(|l| format!("{}", l))
             .collect::<Vec<_>>()
             .join("\n")
             .to_string()
+    }
+
+    pub fn total_by_day(&self) -> HashMap<naive::NaiveDate, chrono::Duration> {
+        let mut days_to_total: HashMap<naive::NaiveDate, chrono::Duration> = HashMap::new();
+        self.logs.iter().for_each(|l| {
+            let day = &l.start.date();
+            let previous_duration = *days_to_total.get(day).unwrap_or(&chrono::Duration::zero());
+            days_to_total.insert(*day, previous_duration + (l.end - l.start));
+        });
+        days_to_total
     }
 }
 

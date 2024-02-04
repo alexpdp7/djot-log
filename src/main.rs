@@ -6,5 +6,6 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     let (logs, errors) = djot_log::parse_log(&source);
     log::error!("{:?}", errors);
     println!("{}", logs.to_plain_text());
+    println!("{:?}", logs.total_by_day());
     Ok(())
 }
