@@ -227,32 +227,6 @@ pub struct Logs {
     logs: HashSet<Log>,
 }
 
-/// ```
-///     assert_eq!(
-///         djot_log::add_running_total(
-///             vec![(&"a".to_string(), &2), (&"b".to_string(), &5)]
-///                 .iter()
-///                 .cloned(),
-///             0
-///         )
-///         .collect::<Vec<_>>(),
-///         vec![("a".to_string(), 2, 2), ("b".to_string(), 5, 7)],
-///     );
-/// ```
-pub fn add_running_total<'a, A: 'a, T>(
-    running: impl Iterator<Item = (&'a A, &'a T)> + 'a,
-    zero: T,
-) -> impl Iterator<Item = (A, T, T)> + 'a
-where
-    A: Clone,
-    T: std::ops::AddAssign + Clone + 'a,
-{
-    running.scan(zero, |total, (a, t)| {
-        *total += t.clone();
-        Some((a.clone(), t.clone(), total.clone()))
-    })
-}
-
 impl Logs {
     fn sorted_logs(&self) -> Vec<Log> {
         let mut logs = self.logs.iter().cloned().collect::<Vec<_>>();
@@ -277,6 +251,24 @@ impl Logs {
             days_to_total.insert(*day, previous_duration + (l.end - l.start));
         });
         days_to_total
+    }
+
+    pub fn accumulated_vs_target(
+        &self,
+        target: chrono::Duration,
+    ) -> Vec<(naive::NaiveDate, chrono::Duration, chrono::Duration)> {
+        self.total_by_day()
+            .iter()
+            .scan(
+                (chrono::Duration::zero(), chrono::Duration::zero()),
+                |(running_total, running_target), (&date, &total)| {
+                    *running_total += total;
+                    *running_target += target;
+                    let vs_target = *running_total - *running_target;
+                    Some((date, total, vs_target))
+                },
+            )
+            .collect::<Vec<_>>()
     }
 }
 

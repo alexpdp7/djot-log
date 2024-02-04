@@ -6,11 +6,8 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     let (logs, errors) = djot_log::parse_log(&source);
     log::error!("{:?}", errors);
     println!("{}", logs.to_plain_text());
-    for (date, duration, running_total) in
-        djot_log::add_running_total(logs.total_by_day().iter(), chrono::Duration::zero())
-            .collect::<Vec<_>>()
-    {
-        println!("{} {} {}", date, duration, running_total);
+    for (date, total, vs_target) in logs.accumulated_vs_target(chrono::Duration::hours(8)) {
+        println!("{} {} {}", date, total, vs_target);
     }
 
     Ok(())
