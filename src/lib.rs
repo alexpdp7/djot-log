@@ -11,10 +11,16 @@ pub struct TimeHeader {
     pub time: naive::NaiveTime,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub struct KindHeader {
+    pub path: Vec<String>,
+}
+
 pub trait NodeExt {
     fn expect_root(self) -> mdast::Root;
     fn to_day_header(&self) -> Option<DayHeader>;
     fn to_time_header(&self) -> Option<TimeHeader>;
+    fn to_kind_header(&self) -> Option<KindHeader>;
 }
 
 impl NodeExt for mdast::Node {
@@ -70,6 +76,34 @@ impl NodeExt for mdast::Node {
                     } else {
                         None
                     }
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
+    /// ```
+    /// use djot_log::NodeExt;
+    /// assert_eq!(
+    ///     djot_log::parse_markdown("### Foo / Bar/Baz / Qux\n").children[0].to_kind_header(),
+    ///     Some(djot_log::KindHeader {
+    ///         path: vec!["Foo".into(), "Bar/Baz".into(), "Qux".into()]
+    ///     })
+    /// );
+    /// ```
+    fn to_kind_header(&self) -> Option<KindHeader> {
+        match self {
+            mdast::Node::Heading(mdast::Heading {
+                children,
+                position: _,
+                depth: 3,
+            }) => {
+                if let [mdast::Node::Text(mdast::Text { value, .. }), ..] = children.as_slice() {
+                    Some(KindHeader {
+                        path: value.split(" / ").map(|x| x.to_string()).collect(),
+                    })
                 } else {
                     None
                 }
