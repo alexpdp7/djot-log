@@ -1,14 +1,20 @@
-use chrono::naive::NaiveDate;
+use chrono::naive;
 use markdown::mdast;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct DayHeader {
-    pub date: NaiveDate,
+    pub date: naive::NaiveDate,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct TimeHeader {
+    pub time: naive::NaiveTime,
 }
 
 pub trait NodeExt {
     fn expect_root(self) -> mdast::Root;
     fn to_day_header(&self) -> Option<DayHeader>;
+    fn to_time_header(&self) -> Option<TimeHeader>;
 }
 
 impl NodeExt for mdast::Node {
@@ -29,8 +35,38 @@ impl NodeExt for mdast::Node {
                 depth: 1,
             }) => {
                 if let [mdast::Node::Text(mdast::Text { value, .. }), ..] = children.as_slice() {
-                    if let Ok(date) = NaiveDate::parse_from_str(value, "%Y-%m-%d") {
+                    if let Ok(date) = naive::NaiveDate::parse_from_str(value, "%Y-%m-%d") {
                         Some(DayHeader { date })
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
+    /// ```
+    /// use djot_log::NodeExt;
+    /// assert_eq!(
+    ///     djot_log::parse_markdown("## 08:00\n").children[0].to_time_header(),
+    ///     Some(djot_log::TimeHeader {
+    ///         time: chrono::naive::NaiveTime::parse_from_str("08:00", "%H:%M").unwrap()
+    ///     })
+    /// );
+    /// ```
+    fn to_time_header(&self) -> Option<TimeHeader> {
+        match self {
+            mdast::Node::Heading(mdast::Heading {
+                children,
+                position: _,
+                depth: 2,
+            }) => {
+                if let [mdast::Node::Text(mdast::Text { value, .. }), ..] = children.as_slice() {
+                    if let Ok(time) = naive::NaiveTime::parse_from_str(value, "%H:%M") {
+                        Some(TimeHeader { time })
                     } else {
                         None
                     }
