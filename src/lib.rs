@@ -122,9 +122,9 @@ impl NodeExt for mdast::Node {
 
     fn to_log_node(&self) -> Option<LogNode> {
         [
-            self.to_day_header().map(|dh| LogNode::DayHeader(dh)),
-            self.to_time_header().map(|th| LogNode::TimeHeader(th)),
-            self.to_kind_header().map(|kh| LogNode::KindHeader(kh)),
+            self.to_day_header().map(LogNode::DayHeader),
+            self.to_time_header().map(LogNode::TimeHeader),
+            self.to_kind_header().map(LogNode::KindHeader),
         ]
         .iter()
         .flatten()
