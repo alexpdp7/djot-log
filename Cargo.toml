@@ -1,0 +1,10 @@
+[package]
+name = "djot-log"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = "0.4.33"
+env_logger = "0.11.1"
+log = "0.4.20"
+markdown = "1.0.0-alpha.16"
