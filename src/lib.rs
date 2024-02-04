@@ -1,4 +1,7 @@
+use std::collections::HashSet;
+
 use chrono::naive;
+use frozenset::Freeze;
 use markdown::mdast;
 
 #[derive(Clone, Debug)]
@@ -184,4 +187,88 @@ pub fn parse_log_nodes(s: &str) -> Vec<LogNode> {
         .iter()
         .flat_map(NodeExt::to_log_node)
         .collect::<Vec<_>>()
+}
+
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub struct Log {
+    pub start: naive::NaiveDateTime,
+    end: naive::NaiveDateTime,
+    kinds: Kinds,
+}
+
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub struct Kinds {
+    paths: frozenset::FrozenSet<Vec<String>>,
+}
+
+impl Kinds {
+    fn new(paths: HashSet<Vec<String>>) -> Kinds {
+        Kinds {
+            paths: paths.freeze(),
+        }
+    }
+}
+
+impl std::fmt::Display for Kinds {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fn fmt_path(path: &Vec<String>) -> String {
+            path.join(" / ")
+        }
+
+        let mut paths = self.paths.iter().map(fmt_path).collect::<Vec<_>>();
+        paths.sort();
+        write!(f, "{}", paths.join(" // "))
+    }
+}
+
+impl std::fmt::Display for Log {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}-{} {}", self.start, self.end.time(), self.kinds)
+    }
+}
+
+pub fn parse_log(s: &str) -> (HashSet<Log>, Vec<String>) {
+    let mut current_day: Option<naive::NaiveDate> = None;
+    let mut start_time: Option<naive::NaiveDateTime> = None;
+    let mut errors: Vec<String> = vec![];
+    let mut kinds = HashSet::new();
+    let mut logs = HashSet::new();
+    for n in parse_log_nodes(s) {
+        match n {
+            LogNode::DayHeader(DayHeader { date }) => {
+                current_day = Some(date);
+            }
+            LogNode::TimeHeader(TimeHeader { time }) => match start_time {
+                None => match current_day {
+                    Some(current_day) => {
+                        start_time = Some(naive::NaiveDateTime::new(current_day, time));
+                    }
+                    None => {
+                        errors.push(format!("Unexpected {:?} without preceding day header", n));
+                    }
+                },
+                Some(start_time_) => {
+                    let end = naive::NaiveDateTime::new(current_day.unwrap(), time);
+                    if !kinds.is_empty() {
+                        logs.insert(Log {
+                            start: start_time_,
+                            end,
+                            kinds: Kinds::new(kinds),
+                        });
+                        kinds = HashSet::new();
+                    }
+                    start_time = Some(end);
+                }
+            },
+            LogNode::KindHeader(KindHeader { ref path }) => match start_time {
+                Some(_) => {
+                    kinds.insert(path.clone());
+                }
+                None => {
+                    errors.push(format!("Unexpected {:?} without start time set", n));
+                }
+            },
+        }
+    }
+    (logs, errors)
 }

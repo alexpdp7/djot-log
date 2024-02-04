@@ -133,6 +133,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "env_logger",
+ "frozenset",
  "log",
  "markdown",
 ]
@@ -159,6 +160,12 @@ dependencies = [
  "humantime",
  "log",
 ]
+
+[[package]]
+name = "frozenset"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5b110328f46621e69076da1a5780b17bd8f6035dc27676bc13c03af5717da8b"
 
 [[package]]
 name = "humantime"
