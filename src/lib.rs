@@ -52,11 +52,9 @@ impl NodeExt for mdast::Node {
                 depth: 1,
             }) => {
                 if let [mdast::Node::Text(mdast::Text { value, .. }), ..] = children.as_slice() {
-                    if let Ok(date) = naive::NaiveDate::parse_from_str(value, "%Y-%m-%d") {
-                        Some(DayHeader { date })
-                    } else {
-                        None
-                    }
+                    Some(DayHeader {
+                        date: naive::NaiveDate::parse_from_str(value, "%Y-%m-%d").ok()?,
+                    })
                 } else {
                     None
                 }
@@ -82,11 +80,9 @@ impl NodeExt for mdast::Node {
                 depth: 2,
             }) => {
                 if let [mdast::Node::Text(mdast::Text { value, .. }), ..] = children.as_slice() {
-                    if let Ok(time) = naive::NaiveTime::parse_from_str(value, "%H:%M") {
-                        Some(TimeHeader { time })
-                    } else {
-                        None
-                    }
+                    Some(TimeHeader {
+                        time: naive::NaiveTime::parse_from_str(value, "%H:%M").ok()?,
+                    })
                 } else {
                     None
                 }
