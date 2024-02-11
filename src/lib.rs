@@ -32,6 +32,7 @@ pub trait NodeExt {
     fn to_time_header(&self) -> Option<TimeHeader>;
     fn to_kind_header(&self) -> Option<KindHeader>;
     fn to_log_node(&self) -> Option<LogNode>;
+    fn get_first_text_value_of_header_of_depth(&self, header_depth: u8) -> Option<String>;
 }
 
 impl NodeExt for mdast::Node {
@@ -45,22 +46,13 @@ impl NodeExt for mdast::Node {
     /// );
     /// ```
     fn to_day_header(&self) -> Option<DayHeader> {
-        match self {
-            mdast::Node::Heading(mdast::Heading {
-                children,
-                position: _,
-                depth: 1,
-            }) => {
-                if let mdast::Node::Text(mdast::Text { value, .. }) = children.first()? {
-                    Some(DayHeader {
-                        date: naive::NaiveDate::parse_from_str(value, "%Y-%m-%d").ok()?,
-                    })
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
+        Some(DayHeader {
+            date: naive::NaiveDate::parse_from_str(
+                &(self.get_first_text_value_of_header_of_depth(1)?),
+                "%Y-%m-%d",
+            )
+            .ok()?,
+        })
     }
 
     /// ```
@@ -73,16 +65,24 @@ impl NodeExt for mdast::Node {
     /// );
     /// ```
     fn to_time_header(&self) -> Option<TimeHeader> {
+        Some(TimeHeader {
+            time: naive::NaiveTime::parse_from_str(
+                &(self.get_first_text_value_of_header_of_depth(2)?),
+                "%H:%M",
+            )
+            .ok()?,
+        })
+    }
+
+    fn get_first_text_value_of_header_of_depth(&self, header_depth: u8) -> Option<String> {
         match self {
             mdast::Node::Heading(mdast::Heading {
                 children,
                 position: _,
-                depth: 2,
-            }) => {
+                depth,
+            }) if *depth == header_depth => {
                 if let mdast::Node::Text(mdast::Text { value, .. }) = children.first()? {
-                    Some(TimeHeader {
-                        time: naive::NaiveTime::parse_from_str(value, "%H:%M").ok()?,
-                    })
+                    Some(value.to_string())
                 } else {
                     None
                 }
@@ -90,7 +90,6 @@ impl NodeExt for mdast::Node {
             _ => None,
         }
     }
-
     /// ```
     /// use djot_log::NodeExt;
     /// assert_eq!(
