@@ -74,22 +74,6 @@ impl NodeExt for mdast::Node {
         })
     }
 
-    fn get_first_text_value_of_header_of_depth(&self, header_depth: u8) -> Option<String> {
-        match self {
-            mdast::Node::Heading(mdast::Heading {
-                children,
-                position: _,
-                depth,
-            }) if *depth == header_depth => {
-                if let mdast::Node::Text(mdast::Text { value, .. }) = children.first()? {
-                    Some(value.to_string())
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    }
     /// ```
     /// use djot_log::NodeExt;
     /// assert_eq!(
@@ -100,16 +84,23 @@ impl NodeExt for mdast::Node {
     /// );
     /// ```
     fn to_kind_header(&self) -> Option<KindHeader> {
+        Some(KindHeader {
+            path: (self.get_first_text_value_of_header_of_depth(3))?
+                .split(" / ")
+                .map(|x| x.to_string())
+                .collect(),
+        })
+    }
+
+    fn get_first_text_value_of_header_of_depth(&self, header_depth: u8) -> Option<String> {
         match self {
             mdast::Node::Heading(mdast::Heading {
                 children,
                 position: _,
-                depth: 3,
-            }) => {
-                if let [mdast::Node::Text(mdast::Text { value, .. }), ..] = children.as_slice() {
-                    Some(KindHeader {
-                        path: value.split(" / ").map(|x| x.to_string()).collect(),
-                    })
+                depth,
+            }) if *depth == header_depth => {
+                if let mdast::Node::Text(mdast::Text { value, .. }) = children.first()? {
+                    Some(value.to_string())
                 } else {
                     None
                 }
