@@ -153,13 +153,18 @@ pub fn parse_markdown(s: &str) -> mdast::Root {
 
 /// ```
 /// let source = std::fs::read_to_string("example.md").unwrap();
-/// let debug = format!("{:?}", djot_log::parse_log_nodes(&source))
-///     .strip_prefix("[")
-///     .unwrap()
-///     .strip_suffix("]")
-///     .unwrap()
-///     .replace("), ", ")\n");
-/// assert_eq!(debug, r##"DayHeader(DayHeader { date: 2023-12-03 })
+/// let debug = format!(
+///     "{:?}",
+///     djot_log::parse_log_nodes(&djot_log::parse_markdown(&source)).collect::<Vec<_>>()
+/// )
+/// .strip_prefix("[")
+/// .unwrap()
+/// .strip_suffix("]")
+/// .unwrap()
+/// .replace("), ", ")\n");
+/// assert_eq!(
+///     debug,
+///     r##"DayHeader(DayHeader { date: 2023-12-03 })
 /// TimeHeader(TimeHeader { time: 09:00:00 })
 /// KindHeader(KindHeader { path: ["Work", "MyOrg", "MyDept", "MyProj"] })
 /// KindHeader(KindHeader { path: ["Coding"] })
@@ -179,14 +184,11 @@ pub fn parse_markdown(s: &str) -> mdast::Root {
 /// TimeHeader(TimeHeader { time: 14:00:00 })
 /// KindHeader(KindHeader { path: ["Work", "MyOrg", "MyDept", "MyProj"] })
 /// KindHeader(KindHeader { path: ["Coding"] })
-/// TimeHeader(TimeHeader { time: 18:00:00 })"##)
+/// TimeHeader(TimeHeader { time: 18:00:00 })"##
+/// )
 /// ```
-pub fn parse_log_nodes(s: &str) -> Vec<LogNode> {
-    parse_markdown(s)
-        .children
-        .iter()
-        .flat_map(NodeExt::to_log_node)
-        .collect::<Vec<_>>()
+pub fn parse_log_nodes(md: &mdast::Root) -> impl Iterator<Item = LogNode> + '_ {
+    md.children.iter().flat_map(NodeExt::to_log_node)
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
@@ -277,11 +279,14 @@ impl Logs {
 /// let source = std::fs::read_to_string("example.md").unwrap();
 /// let (logs, errors) = djot_log::parse_log(&source);
 /// assert!(errors.is_empty());
-/// assert_eq!(logs.to_plain_text(), "2023-12-03 09:00:00-13:00:00 Coding // Work / MyOrg / MyDept / MyProj
+/// assert_eq!(
+///     logs.to_plain_text(),
+///     "2023-12-03 09:00:00-13:00:00 Coding // Work / MyOrg / MyDept / MyProj
 /// 2023-12-03 14:00:00-15:00:00 Meeting // Work / MyOrg / MyDept
 /// 2023-12-03 15:00:00-18:00:00 Coding // Work / MyOrg / MyDept / MyProj
 /// 2023-12-04 09:00:00-13:00:00 Coding // Work / MyOrg / MyDept / MyProj
-/// 2023-12-04 14:00:00-18:00:00 Coding // Work / MyOrg / MyDept / MyProj")
+/// 2023-12-04 14:00:00-18:00:00 Coding // Work / MyOrg / MyDept / MyProj"
+/// )
 /// ```
 pub fn parse_log(s: &str) -> (Logs, Vec<String>) {
     let mut current_day: Option<naive::NaiveDate> = None;
@@ -289,7 +294,7 @@ pub fn parse_log(s: &str) -> (Logs, Vec<String>) {
     let mut errors: Vec<String> = vec![];
     let mut kinds = HashSet::new();
     let mut logs = HashSet::new();
-    for n in parse_log_nodes(s) {
+    for n in parse_log_nodes(&parse_markdown(s)) {
         match n {
             LogNode::DayHeader(DayHeader { date }) => {
                 current_day = Some(date);
