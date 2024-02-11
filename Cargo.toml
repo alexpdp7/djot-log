@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-chrono = "0.4.33"
+chrono = "0.4.34"
 env_logger = "0.11.1"
 frozenset = "0.2.2"
 itertools = "0.12.1"

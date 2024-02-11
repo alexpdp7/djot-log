@@ -12,12 +12,12 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     }
     let total_by_day = djot_log::total_by_day(logs.iter());
     let total_by_day_with_running = djot_log::add_running_total(total_by_day.iter());
-    let target = djot_log::target(chrono::Duration::hours(8));
+    let target = djot_log::target(chrono::TimeDelta::hours(8));
     let total_by_day_vs_target =
         djot_log::running_total_vs_target(total_by_day_with_running, target).collect::<Vec<_>>();
     for (date, total, vs_target) in total_by_day_vs_target.iter().rev() {
         println!("{} {} {}", date, total, vs_target);
-        if *vs_target == chrono::Duration::zero() {
+        if *vs_target == chrono::TimeDelta::zero() {
             break;
         }
     }

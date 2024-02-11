@@ -14,7 +14,7 @@ pub struct Log {
 }
 
 impl Log {
-    fn duration(&self) -> chrono::Duration {
+    fn duration(&self) -> chrono::TimeDelta {
         self.end - self.start
     }
 }
@@ -48,7 +48,7 @@ impl std::fmt::Display for Log {
 
 pub fn total_by_day<'a>(
     logs: impl Iterator<Item = &'a Log>,
-) -> Vec<(naive::NaiveDate, chrono::Duration)> {
+) -> Vec<(naive::NaiveDate, chrono::TimeDelta)> {
     logs.group_by(|l| l.start.date())
         .into_iter()
         .map(|(d, ls)| (d, ls.map(|l| l.duration()).sum()))
@@ -56,22 +56,22 @@ pub fn total_by_day<'a>(
 }
 
 pub fn add_running_total<'a>(
-    logs: impl Iterator<Item = &'a (naive::NaiveDate, chrono::Duration)> + 'a,
-) -> impl Iterator<Item = (naive::NaiveDate, chrono::Duration, chrono::Duration)> + 'a {
-    logs.scan(chrono::Duration::zero(), |state, (date, duration)| {
+    logs: impl Iterator<Item = &'a (naive::NaiveDate, chrono::TimeDelta)> + 'a,
+) -> impl Iterator<Item = (naive::NaiveDate, chrono::TimeDelta, chrono::TimeDelta)> + 'a {
+    logs.scan(chrono::TimeDelta::zero(), |state, (date, duration)| {
         *state += *duration;
         Some((*date, *duration, *state))
     })
 }
 
-pub fn target(incr: chrono::Duration) -> impl Iterator<Item = chrono::Duration> {
+pub fn target(incr: chrono::TimeDelta) -> impl Iterator<Item = chrono::TimeDelta> {
     std::ops::RangeFrom { start: 1 }.map(move |i| incr * i)
 }
 
 pub fn running_total_vs_target(
-    logs: impl Iterator<Item = (naive::NaiveDate, chrono::Duration, chrono::Duration)>,
-    target: impl Iterator<Item = chrono::Duration>,
-) -> impl Iterator<Item = (naive::NaiveDate, chrono::Duration, chrono::Duration)> {
+    logs: impl Iterator<Item = (naive::NaiveDate, chrono::TimeDelta, chrono::TimeDelta)>,
+    target: impl Iterator<Item = chrono::TimeDelta>,
+) -> impl Iterator<Item = (naive::NaiveDate, chrono::TimeDelta, chrono::TimeDelta)> {
     logs.zip(target)
         .map(|((date, total, running), target)| (date, total, running - target))
 }
