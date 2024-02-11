@@ -1,7 +1,8 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 
 use chrono::naive;
 use frozenset::Freeze;
+use itertools::Itertools;
 
 pub mod md;
 
@@ -10,6 +11,12 @@ pub struct Log {
     pub start: naive::NaiveDateTime,
     end: naive::NaiveDateTime,
     kinds: Kinds,
+}
+
+impl Log {
+    fn duration(&self) -> chrono::Duration {
+        self.end - self.start
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
@@ -39,53 +46,34 @@ impl std::fmt::Display for Log {
     }
 }
 
-pub struct Logs {
-    logs: HashSet<Log>,
+pub fn total_by_day<'a>(
+    logs: impl Iterator<Item = &'a Log>,
+) -> Vec<(naive::NaiveDate, chrono::Duration)> {
+    logs.group_by(|l| l.start.date())
+        .into_iter()
+        .map(|(d, ls)| (d, ls.map(|l| l.duration()).sum()))
+        .collect()
 }
 
-impl Logs {
-    fn sorted_logs(&self) -> Vec<Log> {
-        let mut logs = self.logs.iter().cloned().collect::<Vec<_>>();
-        logs.sort_by_key(|l| l.start);
-        logs
-    }
+pub fn add_running_total<'a>(
+    logs: impl Iterator<Item = &'a (naive::NaiveDate, chrono::Duration)> + 'a,
+) -> impl Iterator<Item = (naive::NaiveDate, chrono::Duration, chrono::Duration)> + 'a {
+    logs.scan(chrono::Duration::zero(), |state, (date, duration)| {
+        *state += *duration;
+        Some((*date, *duration, *state))
+    })
+}
 
-    pub fn to_plain_text(&self) -> String {
-        self.sorted_logs()
-            .iter()
-            .map(|l| format!("{}", l))
-            .collect::<Vec<_>>()
-            .join("\n")
-            .to_string()
-    }
+pub fn target(incr: chrono::Duration) -> impl Iterator<Item = chrono::Duration> {
+    std::ops::RangeFrom { start: 1 }.map(move |i| incr * i)
+}
 
-    pub fn total_by_day(&self) -> BTreeMap<naive::NaiveDate, chrono::Duration> {
-        let mut days_to_total: BTreeMap<naive::NaiveDate, chrono::Duration> = BTreeMap::new();
-        self.logs.iter().for_each(|l| {
-            let day = &l.start.date();
-            let previous_duration = *days_to_total.get(day).unwrap_or(&chrono::Duration::zero());
-            days_to_total.insert(*day, previous_duration + (l.end - l.start));
-        });
-        days_to_total
-    }
-
-    pub fn accumulated_vs_target(
-        &self,
-        target: chrono::Duration,
-    ) -> Vec<(naive::NaiveDate, chrono::Duration, chrono::Duration)> {
-        self.total_by_day()
-            .iter()
-            .scan(
-                (chrono::Duration::zero(), chrono::Duration::zero()),
-                |(running_total, running_target), (&date, &total)| {
-                    *running_total += total;
-                    *running_target += target;
-                    let vs_target = *running_total - *running_target;
-                    Some((date, total, vs_target))
-                },
-            )
-            .collect::<Vec<_>>()
-    }
+pub fn running_total_vs_target(
+    logs: impl Iterator<Item = (naive::NaiveDate, chrono::Duration, chrono::Duration)>,
+    target: impl Iterator<Item = chrono::Duration>,
+) -> impl Iterator<Item = (naive::NaiveDate, chrono::Duration, chrono::Duration)> {
+    logs.zip(target)
+        .map(|((date, total, running), target)| (date, total, running - target))
 }
 
 ///
@@ -94,7 +82,10 @@ impl Logs {
 /// let (logs, errors) = djot_log::parse_log(&source);
 /// assert!(errors.is_empty());
 /// assert_eq!(
-///     logs.to_plain_text(),
+///     logs.iter()
+///         .map(|l| format!("{}", l))
+///         .collect::<Vec<_>>()
+///         .join("\n"),
 ///     "2023-12-03 09:00:00-13:00:00 Coding // Work / MyOrg / MyDept / MyProj
 /// 2023-12-03 14:00:00-15:00:00 Meeting // Work / MyOrg / MyDept
 /// 2023-12-03 15:00:00-18:00:00 Coding // Work / MyOrg / MyDept / MyProj
@@ -102,12 +93,12 @@ impl Logs {
 /// 2023-12-04 14:00:00-18:00:00 Coding // Work / MyOrg / MyDept / MyProj"
 /// )
 /// ```
-pub fn parse_log(s: &str) -> (Logs, Vec<String>) {
+pub fn parse_log(s: &str) -> (Vec<Log>, Vec<String>) {
     let mut current_day: Option<naive::NaiveDate> = None;
     let mut start_time: Option<naive::NaiveDateTime> = None;
     let mut errors: Vec<String> = vec![];
     let mut kinds = HashSet::new();
-    let mut logs = HashSet::new();
+    let mut logs = Vec::new();
     for n in md::parse_log_nodes(&md::parse_markdown(s)) {
         match n {
             md::LogNode::DayHeader(md::DayHeader { date }) => {
@@ -125,7 +116,7 @@ pub fn parse_log(s: &str) -> (Logs, Vec<String>) {
                 Some(start_time_) => {
                     let end = naive::NaiveDateTime::new(current_day.unwrap(), time);
                     if !kinds.is_empty() {
-                        logs.insert(Log {
+                        logs.push(Log {
                             start: start_time_,
                             end,
                             kinds: Kinds::new(kinds),
@@ -145,5 +136,5 @@ pub fn parse_log(s: &str) -> (Logs, Vec<String>) {
             },
         }
     }
-    (Logs { logs }, errors)
+    (logs, errors)
 }
