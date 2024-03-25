@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 
     let total_by_day = djot_log::total_by_day(logs.iter());
     let total_by_day_with_running = djot_log::add_running_total(total_by_day.iter());
-    let target = djot_log::target(chrono::TimeDelta::hours(args.hours_target));
+    let target = djot_log::target(chrono::TimeDelta::try_hours(args.hours_target).unwrap());
     let total_by_day_vs_target =
         djot_log::running_total_vs_target(total_by_day_with_running, target).collect::<Vec<_>>();
     for (i, (date, total, vs_target)) in total_by_day_vs_target.iter().rev().enumerate() {
