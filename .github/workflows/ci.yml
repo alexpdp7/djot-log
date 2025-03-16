@@ -1,0 +1,176 @@
+on: [push]
+
+name: Continuous integration
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
+
+  test:
+    name: Test Suite
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      matrix:
+        runs-on:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - run: rustup component add rustfmt
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - run: rustup component add clippy
+      - uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings -D clippy::pedantic
+
+  build-release-linux:
+    needs: [check, test, fmt, clippy]
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      matrix:
+        runs-on:
+          - ubuntu-latest
+        arch:
+          - x86_64
+          # - aarch64
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          target: ${{ matrix.arch }}-unknown-linux-gnu
+      - run: sudo apt install -y gcc-aarch64-linux-gnu
+        if: "${{ matrix.arch == 'aarch64' }}"
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target ${{ matrix.arch }}-unknown-linux-gnu
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: djot-log-${{ matrix.runs-on }}-${{ matrix.arch }}
+          path: target/${{ matrix.arch }}-unknown-linux-gnu/release/djot-log
+
+  build-release-mac:
+    needs: [check, test, fmt, clippy]
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      matrix:
+        runs-on:
+          - macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          target: x86_64-apple-darwin
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target=x86_64-apple-darwin
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target=aarch64-apple-darwin
+      - run: lipo -create -output target/djot-log target/x86_64-apple-darwin/release/djot-log target/aarch64-apple-darwin/release/djot-log
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: djot-log-${{ matrix.runs-on }}
+          path: target/djot-log
+
+  build-release-windows:
+    needs: [check, test, fmt, clippy]
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      matrix:
+        runs-on:
+          - windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: djot-log-${{ matrix.runs-on }}
+          path: target/release/djot-log.exe
+
+  create-release:
+    needs: [build-release-linux,build-release-mac,build-release-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+      - name: Create release
+        run: |
+          mv djot-log-ubuntu-latest-x86_64/djot-log djot-log-linux-x86_64
+          # mv djot-log-ubuntu-latest-aarch64/djot-log djot-log-linux-aarch64
+          mv djot-log-macos-latest/djot-log djot-log-macos
+          mv djot-log-windows-latest/djot-log.exe djot-log.exe
+          d=$(date "+%Y-%m-%d_%H%M")
+          gh release create --generate-notes -t "Release $d" release_$d djot-log-linux-x86_64 djot-log-macos djot-log.exe # djot-log-linux-aarch64 
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
