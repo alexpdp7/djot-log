@@ -51,7 +51,7 @@ pub fn total_by_day<'a>(
 ) -> Vec<(naive::NaiveDate, chrono::TimeDelta)> {
     logs.group_by(|l| l.start.date())
         .into_iter()
-        .map(|(d, ls)| (d, ls.map(|l| l.duration()).sum()))
+        .map(|(d, ls)| (d, ls.map(Log::duration).sum()))
         .collect()
 }
 
@@ -76,6 +76,9 @@ pub fn running_total_vs_target(
         .map(|((date, total, running), target)| (date, total, running - target))
 }
 
+/// # Panics
+///
+/// If you look wrong at it.
 ///
 /// ```
 /// let source = std::fs::read_to_string("example.md").unwrap();
@@ -93,6 +96,7 @@ pub fn running_total_vs_target(
 /// 2023-12-04 14:00:00-18:00:00 Coding // Work / MyOrg / MyDept / MyProj"
 /// )
 /// ```
+#[allow(clippy::must_use_candidate)]
 pub fn parse_log(s: &str) -> (Vec<Log>, Vec<String>) {
     let mut current_day: Option<naive::NaiveDate> = None;
     let mut start_time: Option<naive::NaiveDateTime> = None;
@@ -110,7 +114,7 @@ pub fn parse_log(s: &str) -> (Vec<Log>, Vec<String>) {
                         start_time = Some(naive::NaiveDateTime::new(current_day, time));
                     }
                     None => {
-                        errors.push(format!("Unexpected {:?} without preceding day header", n));
+                        errors.push(format!("Unexpected {n:?} without preceding day header"));
                     }
                 },
                 Some(start_time_) => {
@@ -131,7 +135,7 @@ pub fn parse_log(s: &str) -> (Vec<Log>, Vec<String>) {
                     kinds.insert(path.clone());
                 }
                 None => {
-                    errors.push(format!("Unexpected {:?} without start time set", n));
+                    errors.push(format!("Unexpected {n:?} without start time set"));
                 }
             },
         }
