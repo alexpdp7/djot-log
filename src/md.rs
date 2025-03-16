@@ -85,7 +85,7 @@ impl NodeExt for mdast::Node {
         Some(KindHeader {
             path: (self.get_first_text_value_of_header_of_depth(3))?
                 .split(" / ")
-                .map(|x| x.to_string())
+                .map(std::string::ToString::to_string)
                 .collect(),
         })
     }
@@ -123,12 +123,16 @@ impl NodeExt for mdast::Node {
         match self {
             mdast::Node::Root(root) => root,
             _ => {
-                panic!("Expected root {:?}", self);
+                panic!("Expected root {self:?}");
             }
         }
     }
 }
 
+/// # Panics
+///
+/// If parsing as Markdown fails.
+#[allow(clippy::must_use_candidate)]
 pub fn parse_markdown(s: &str) -> mdast::Root {
     markdown::to_mdast(s, &markdown::ParseOptions::default())
         .unwrap()
@@ -172,5 +176,5 @@ pub fn parse_markdown(s: &str) -> mdast::Root {
 /// )
 /// ```
 pub fn parse_log_nodes(md: &mdast::Root) -> impl Iterator<Item = LogNode> + '_ {
-    md.children.iter().flat_map(NodeExt::to_log_node)
+    md.children.iter().filter_map(NodeExt::to_log_node)
 }

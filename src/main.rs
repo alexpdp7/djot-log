@@ -47,20 +47,16 @@ fn main() -> Result<(), Box<dyn error::Error>> {
         }
     }
 
-    let show = args
-        .show
-        .map(|s| {
-            chrono::NaiveDate::parse_from_str(s.as_ref(), "%Y-%m-%d")
-                .expect("Unparseable show date")
-        })
-        .unwrap_or(chrono::Local::now().date_naive());
+    let show = args.show.map_or(chrono::Local::now().date_naive(), |s| {
+        chrono::NaiveDate::parse_from_str(s.as_ref(), "%Y-%m-%d").expect("Unparseable show date")
+    });
 
     println!();
-    println!("Logs for {}:", show);
+    println!("Logs for {show}:");
     println!();
 
     for log in logs.iter().filter(|l| l.start.date() == show) {
-        println!("{}", log);
+        println!("{log}");
     }
 
     Ok(())
